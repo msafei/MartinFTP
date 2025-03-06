@@ -39,51 +39,38 @@ def connect_ftp(path=""):
         ftp.quit()
 
         # Bersihkan tampilan sebelumnya
-        text_display.config(state=tk.NORMAL)
-        text_display.delete('1.0', tk.END)
+        file_listbox.delete(0, tk.END)
 
         # Jika dalam subdirektori, tambahkan tombol kembali
         if current_path:
-            text_display.insert(tk.END, f"🔙 {current_path}\n\n", 'back')
+            file_listbox.insert(tk.END, f" ../ {current_path}")
 
         # Tampilkan folder dengan ikon 📁
         for folder in dirs:
-            text_display.insert(tk.END, f"📁 {folder}\n", 'folder')
-
-        # Tambahkan sedikit gap antara folder dan file
-        if dirs and files:
-            text_display.insert(tk.END, "\n")
+            file_listbox.insert(tk.END, f"📁 {folder}")
 
         # Tampilkan file dengan ikon 📃
         for file in files:
-            text_display.insert(tk.END, f"📃 {file}\n", 'file')
-
-        text_display.config(state=tk.DISABLED)
+            file_listbox.insert(tk.END, f"📃 {file}")
 
     except Exception as e:
         messagebox.showerror("Error", f"Gagal terkoneksi: {e}")
 
-# Event klik untuk menyorot teks dengan efek seleksi biru
-def on_text_click(event):
+# Event double-click untuk membuka folder
+def on_item_double_click(event):
     try:
-        text_display.config(state=tk.NORMAL)
-        index = text_display.index(tk.CURRENT)
-        selected_text = text_display.get(index + " linestart", index + " lineend").strip()
+        selected_indices = file_listbox.curselection()
+        if not selected_indices:
+            return
 
-        # Hapus semua highlight sebelumnya
-        text_display.tag_remove("selected", "1.0", tk.END)
+        selected_text = file_listbox.get(selected_indices[0])
 
-        # Sorot baris yang dipilih dengan warna biru
-        text_display.tag_add("selected", index + " linestart", index + " lineend")
-
-        if selected_text.startswith("📁 "):  # Jika folder, masuk ke dalamnya
+        if selected_text.startswith("📁 "):  # Jika folder, masuk ke dalamnya dengan double click
             folder_name = selected_text[2:].strip()
             connect_ftp(current_path + "/" + folder_name if current_path else folder_name)
-        elif selected_text.startswith("⬅️ "):  # Jika tombol kembali, naik satu level
+        elif selected_text.startswith(" ../"):  # Jika tombol kembali, naik satu level
             parent_path = "/".join(current_path.split("/")[:-1]) if "/" in current_path else ""
             connect_ftp(parent_path)
-
-        text_display.config(state=tk.DISABLED)
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
@@ -91,7 +78,6 @@ def on_text_click(event):
 root = tk.Tk()
 root.title("MartinFTP 📂")
 root.geometry("600x500")
-root.configure(cursor="arrow")  # Mengubah kursor menjadi panah
 
 frame = ttk.Frame(root, padding=15)
 frame.pack(expand=True, fill=tk.BOTH)
@@ -108,37 +94,27 @@ title_desc.pack(pady=(0,10))
 btn_connect = ttk.Button(frame, text="🔗 Connect FTP", command=lambda: connect_ftp(""))
 btn_connect.pack(pady=(0,10))
 
-# Frame text display
-text_frame = ttk.Frame(frame)
-text_frame.pack(expand=True, fill=tk.BOTH, pady=10)
+# Frame listbox
+file_frame = ttk.Frame(frame)
+file_frame.pack(expand=True, fill=tk.BOTH, pady=10)
 
 # Scrollbar
-scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL)
+scrollbar = ttk.Scrollbar(file_frame, orient=tk.VERTICAL)
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-# Widget Text untuk menampilkan daftar file dan folder
-text_display = tk.Text(
-    text_frame,
+# Listbox untuk daftar file dan folder
+file_listbox = tk.Listbox(
+    file_frame,
     font=("Segoe UI", 10),
-    yscrollcommand=scrollbar.set,
-    state=tk.DISABLED,
-    relief=tk.FLAT,
-    padx=10,
-    pady=10,
-    cursor="arrow"  # Mengubah kursor menjadi panah saat hover di area text
+    selectmode=tk.EXTENDED,  # Multi-selection
+    yscrollcommand=scrollbar.set
 )
-text_display.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-scrollbar.config(command=text_display.yview)
+scrollbar.config(command=file_listbox.yview)
 
-# Tagging untuk gaya tampilan
-text_display.tag_configure('back', foreground="blue", underline=True)
-text_display.tag_configure('folder', foreground="black")
-text_display.tag_configure('selected', background="#d0eaff")  # Highlight warna biru muda
-
-# Bind event klik untuk seleksi biru dan navigasi folder
-text_display.bind("<ButtonRelease-1>", on_text_click)
-text_display.bind("<B1-Motion>", on_text_click)  # Efek seleksi saat drag
+# Bind event double-click untuk membuka folder
+file_listbox.bind("<Double-Button-1>", on_item_double_click)
 
 # Jalankan GUI
 root.mainloop()
