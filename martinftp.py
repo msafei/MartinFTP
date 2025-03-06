@@ -63,7 +63,7 @@ def connect_ftp(path=""):
     except Exception as e:
         messagebox.showerror("Error", f"Gagal terkoneksi: {e}")
 
-# Event klik untuk menyorot teks
+# Event klik untuk menyorot teks dengan efek seleksi biru
 def on_text_click(event):
     try:
         text_display.config(state=tk.NORMAL)
@@ -73,13 +73,13 @@ def on_text_click(event):
         # Hapus semua highlight sebelumnya
         text_display.tag_remove("selected", "1.0", tk.END)
 
-        # Sorot baris yang dipilih
+        # Sorot baris yang dipilih dengan warna biru
         text_display.tag_add("selected", index + " linestart", index + " lineend")
 
         if selected_text.startswith("📁 "):  # Jika folder, masuk ke dalamnya
             folder_name = selected_text[2:].strip()
             connect_ftp(current_path + "/" + folder_name if current_path else folder_name)
-        elif selected_text.startswith("🔙 "):  # Jika tombol kembali, naik satu level
+        elif selected_text.startswith("⬅️ "):  # Jika tombol kembali, naik satu level
             parent_path = "/".join(current_path.split("/")[:-1]) if "/" in current_path else ""
             connect_ftp(parent_path)
 
@@ -91,6 +91,7 @@ def on_text_click(event):
 root = tk.Tk()
 root.title("MartinFTP 📂")
 root.geometry("600x500")
+root.configure(cursor="arrow")  # Mengubah kursor menjadi panah
 
 frame = ttk.Frame(root, padding=15)
 frame.pack(expand=True, fill=tk.BOTH)
@@ -123,7 +124,8 @@ text_display = tk.Text(
     state=tk.DISABLED,
     relief=tk.FLAT,
     padx=10,
-    pady=10
+    pady=10,
+    cursor="arrow"  # Mengubah kursor menjadi panah saat hover di area text
 )
 text_display.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -134,8 +136,9 @@ text_display.tag_configure('back', foreground="blue", underline=True)
 text_display.tag_configure('folder', foreground="black")
 text_display.tag_configure('selected', background="#d0eaff")  # Highlight warna biru muda
 
-# Bind event double click
-text_display.bind("<Double-1>", on_text_click)
+# Bind event klik untuk seleksi biru dan navigasi folder
+text_display.bind("<ButtonRelease-1>", on_text_click)
+text_display.bind("<B1-Motion>", on_text_click)  # Efek seleksi saat drag
 
 # Jalankan GUI
 root.mainloop()
