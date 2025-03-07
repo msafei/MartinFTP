@@ -5,13 +5,13 @@ from ftplib import FTP
 import configparser
 import threading
 
-# Load konfigurasi FTP dan folder tujuan download
+# 1. Load konfigurasi FTP dan folder tujuan download
 def load_config():
     config = configparser.ConfigParser()
     config.read('config.ini')
     return config['FTP'], config['LOCAL']
 
-# Koneksi FTP dan daftar file
+# 2. Koneksi FTP dan daftar file
 def connect_ftp(path=""):
     try:
         global current_path
@@ -28,7 +28,7 @@ def connect_ftp(path=""):
         files = []
         dirs = []
 
-        # Ambil daftar file dan folder
+        # 2.1. Ambil daftar file dan folder
         def parse_line(line):
             parts = line.split()
             name = " ".join(parts[8:])
@@ -40,25 +40,25 @@ def connect_ftp(path=""):
         ftp.retrlines('LIST', parse_line)
         ftp.quit()
 
-        # Bersihkan tampilan sebelumnya
+        # 2.2. Bersihkan tampilan sebelumnya
         file_listbox.delete(0, tk.END)
 
-        # Jika dalam subdirektori, tambahkan tombol kembali
+        # 2.3. Jika dalam subdirektori, tambahkan tombol kembali
         if current_path:
             file_listbox.insert(tk.END, f" ../ {current_path}")
 
-        # Tampilkan folder dengan ikon 📁
+        # 2.4. Tampilkan folder dengan ikon 📁
         for folder in dirs:
             file_listbox.insert(tk.END, f"📁 {folder}")
 
-        # Tampilkan file dengan ikon 📃
+        # 2.5. Tampilkan file dengan ikon 📃
         for file in files:
             file_listbox.insert(tk.END, f"📃 {file}")
 
     except Exception as e:
         messagebox.showerror("Error", f"Gagal terkoneksi: {e}")
 
-# Event double-click untuk membuka folder
+# 3. Event double-click untuk membuka folder
 def on_item_double_click(event):
     try:
         selected_indices = file_listbox.curselection()
@@ -76,7 +76,7 @@ def on_item_double_click(event):
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
-# Fungsi menampilkan jendela progress
+# 4. Fungsi menampilkan jendela progress
 def show_progress_window(files):
     global progress_window, progress_listbox
     progress_window = tk.Toplevel(root)
@@ -87,19 +87,19 @@ def show_progress_window(files):
     progress_listbox = tk.Listbox(progress_window, font=("Segoe UI", 10))
     progress_listbox.pack(expand=True, fill=tk.BOTH, padx=10, pady=5)
 
-    # Tambahkan semua file ke dalam progress window
+    # 4.1. Tambahkan semua file ke dalam progress window
     for file in files:
         progress_listbox.insert(tk.END, f"{file} - 0%")
 
-    # Mencegah interaksi dengan jendela utama
+    # 4.2. Mencegah interaksi dengan jendela utama
     progress_window.grab_set()
 
-# Fungsi update status di jendela utama
+# 5. Fungsi update status di jendela utama
 def update_status(filename, downloaded, total_size, percent):
     status_label.config(text=f"Status: {filename} ({downloaded} byte / {total_size} byte) {percent}%")
     root.update_idletasks()
 
-# Fungsi update progress di jendela progress
+# 6. Fungsi update progress di jendela progress
 def update_progress(filename, percent):
     for i in range(progress_listbox.size()):
         if filename in progress_listbox.get(i):
@@ -108,7 +108,7 @@ def update_progress(filename, percent):
             break
     root.update_idletasks()
 
-# Fungsi untuk membuka folder setelah unduhan selesai
+# 7. Fungsi untuk membuka folder setelah unduhan selesai
 def open_download_folder():
     _, local_config = load_config()
     download_path = local_config['download_folder']
@@ -118,13 +118,13 @@ def open_download_folder():
         except Exception as e:
             messagebox.showerror("Error", f"Gagal membuka folder: {e}")
 
-# Fungsi download file dari FTP ke lokal
+# 8. Fungsi download file dari FTP ke lokal
 def download_files():
     try:
         ftp_config, local_config = load_config()
         download_path = local_config['download_folder']
 
-        # Buat folder tujuan jika belum ada
+        # 8.1. Buat folder tujuan jika belum ada
         if not os.path.exists(download_path):
             os.makedirs(download_path)
 
@@ -133,10 +133,10 @@ def download_files():
             messagebox.showwarning("Peringatan", "Pilih file untuk diunduh!")
             return
 
-        # Ambil nama file tanpa ikon
+        # 8.2. Ambil nama file tanpa ikon
         file_names = [file[2:].strip() for file in selected_files if file.startswith("📃 ")]
 
-        # Tampilkan progress window
+        # 8.3. Tampilkan progress window
         show_progress_window(file_names)
 
         ftp = FTP()
@@ -146,15 +146,16 @@ def download_files():
         if current_path:
             ftp.cwd(current_path)
 
+        # 8.4. Fungsi download file tunggal
         def download_single_file(filename):
             local_file_path = os.path.join(download_path, filename)
 
-            # Ambil ukuran file
+            # 8.4.1. Ambil ukuran file
             file_size = ftp.size(filename)
             total_downloaded = 0
             last_percent = -1  # Untuk menghindari refresh yang tidak perlu
 
-            # Fungsi callback untuk tracking progress
+            # 8.4.2. Fungsi callback untuk tracking progress
             def progress_callback(data):
                 nonlocal total_downloaded, last_percent
                 total_downloaded += len(data)
@@ -168,29 +169,30 @@ def download_files():
             with open(local_file_path, "wb") as f:
                 ftp.retrbinary(f"RETR {filename}", progress_callback)
 
-            # Hapus dari progress window setelah selesai
+            # 8.4.3. Hapus dari progress window setelah selesai
             for i in range(progress_listbox.size()):
                 if filename in progress_listbox.get(i):
                     progress_listbox.delete(i)
                     break
 
+        # 8.5. Mulai proses download
         for file in file_names:
             download_single_file(file)
 
         ftp.quit()
 
-        # Tutup progress window setelah semua file selesai
+        # 8.6. Tutup progress window setelah semua file selesai
         progress_window.destroy()
         update_status("Semua unduhan selesai", 0, 0, 100)
 
-        # Menampilkan pesan sukses dan membuka folder setelah OK ditekan
+        # 8.7. Menampilkan pesan sukses dan membuka folder setelah OK ditekan
         messagebox.showinfo("Sukses", f"File berhasil diunduh ke {download_path}")
         open_download_folder()
 
     except Exception as e:
         messagebox.showerror("Error", f"Gagal mengunduh file: {e}")
 
-# GUI Utama
+# 9. GUI Utama
 root = tk.Tk()
 root.title("MartinFTP 📂")
 root.geometry("650x600")
@@ -198,23 +200,25 @@ root.geometry("650x600")
 frame = ttk.Frame(root, padding=20)
 frame.pack(expand=True, fill=tk.BOTH)
 
-# Judul
+# 9.1. Judul aplikasi
 title_label = ttk.Label(frame, text="MartinFTP 📂", font=("Helvetica", 20, "bold"))
 title_label.pack(pady=(5,10))
 
-# Tombol download file yang lebih besar
+# 9.2. Tombol download
 btn_download = ttk.Button(frame, text="📥  FTP to Local", command=lambda: threading.Thread(target=download_files).start(), style="TButton")
 btn_download.pack(pady=(5,15), ipadx=10, ipady=10)
 
-# Status label untuk proses unduhan
+# 9.3. Status label
 status_label = ttk.Label(frame, text="Status: Menunggu perintah...", font=("Helvetica", 11))
 status_label.pack(pady=(0,10))
 
+# 9.4. Listbox file
 file_listbox = tk.Listbox(frame, font=("Segoe UI", 11), selectmode=tk.EXTENDED, height=20)
 file_listbox.pack(expand=True, fill=tk.BOTH, padx=10, pady=5)
 
 file_listbox.bind("<Double-Button-1>", on_item_double_click)
 
-connect_ftp("")  # Auto-koneksi saat aplikasi dijalankan
+# 10. Koneksi FTP awal
+connect_ftp("")  
 
 root.mainloop()
